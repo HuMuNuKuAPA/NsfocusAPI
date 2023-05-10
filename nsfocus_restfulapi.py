@@ -37,22 +37,11 @@ class NsfocusAPI:
 
         # 获取当前的时间戳，并转换为字符串格式，在后面用于计算13位时间戳用
         self.currunttime = str(time.time())
-        # 设置连接数据库的参数
-        self.mydb = pymysql.connect(
-            host="10.168.51.237",
-            user="wuzp",
-            password="Systec#278",
-            database="config_backup",
-            port=3306,
-            charset="utf8"
-        )
-
         # 以下参数用于发送邮件时候用
         # self.mailServer = 'smtp.163.com'
         # self.mailAccount = 'kinggeorge58@163.com'
         # self.mailPWD = 'CIUJLHQYJACWYYZM'  # 163的发件人密码
         # # self.mailPWD = 'mkfnsbsrqtiobcbb'  # QQ的发件人密码
-
         self.mailServer = 'mail.cfsc.com.cn'
         self.mailAccount = 'wuzp@cfsc.com.cn'
         self.mailPWD = 'Systec123'  # 公司邮箱的发件人密码
@@ -275,9 +264,13 @@ class NsfocusAPI:
         之前关闭数据库连接都是写在write_to_database和analyse_database这两个方法里的，但是实际循环调用的时候会发现报错，循环第一个元素的时
         候正常，但是循环到第二个元素的时候就会数据库报错，查了一些资料可能是和关闭数据库连接有关，在循环到第二个元素的时候发现数据断开连接了，
         至于具体的原因，以我现在的能力无法解决，希望又有朝一日我能搞清楚2023年5月9日！！！！！！！！！！
+
+        大概知道问题了，我把pymysql.connect（）这个数据库连接对象写到__init__里面了，我想复用代码，数据库连接对象在创建class对象的时候
+        会一并生成但是一旦数据库连接被关闭，就没有数据库连接对象的连接了，后续再想连数据库就会报错2023年5月10日
         :return:
         """
-        self.mydb.close()
+        # self.mydb.close()
+        pass
 
     def write_to_database(self, ips_ip, tb_name, time_step=1):
         """
@@ -322,9 +315,17 @@ class NsfocusAPI:
                     opt_time)
                 values.append(items)
             try:
+                # 创建数据库连接对象
+                mydb = pymysql.connect(
+                    host="10.168.51.237",
+                    user="wuzp",
+                    password="Systec#278",
+                    database="config_backup",
+                    port=3306,
+                    charset="utf8"
+                )
                 # 创建游标对象
-                mycursor = self.mydb.cursor()
-
+                mycursor = mydb.cursor()
                 # 定义插入多条数据的SQL语句
                 sql = "INSERT INTO {} (sip, attack_number,dip,dport,threat_level,event,threat_type,attack_type," \
                       "action,scountry,event_time,opt_time) " \
@@ -334,10 +335,12 @@ class NsfocusAPI:
                 mycursor.executemany(sql, values)
 
                 # 提交事务
-                self.mydb.commit()
+                mydb.commit()
                 print('数据写入成功')
             except pymysql.Error as error:
                 print("Failed to execute query: {}".format(error))
+            # 关闭数据库连接
+            mydb.close()
 
         else:
             # 如果没有获取到IPS日志，则根据判断 是否需要发邮件提醒
@@ -365,8 +368,17 @@ class NsfocusAPI:
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
+            # 创建数据库连接对象
+            mydb = pymysql.connect(
+                host="10.168.51.237",
+                user="wuzp",
+                password="Systec#278",
+                database="config_backup",
+                port=3306,
+                charset="utf8"
+            )
             # 创建游标对象
-            mycursor = self.mydb.cursor()
+            mycursor = mydb.cursor()
             # 执行SQL语句，查询orders表中customer_id为1的记录
             sql = "select sip, count(*) from {} where event_time  BETWEEN NOW() - INTERVAL %s HOUR AND NOW()".format(
                 tb_name)
@@ -395,8 +407,8 @@ class NsfocusAPI:
             # print(myresult)
             raise error
 
-        # # 关闭连接
-        # self.mydb.close()
+        # 关闭连接
+        mydb.close()
 
         # 以下三个时间参数都是为了发送邮件时候用的
         hour_step = datetime.timedelta(hours=time_step)
@@ -437,6 +449,6 @@ if __name__ == '__main__':
         '10.192.4.61': ['kjw_ips_event', 2, '科技网'],
         '10.190.204.66': ['wp_ips_event', 16, '宛平南路'],
     }
+
     for k, v in arg_dict.items():
-        myobj.write_to_database(k, v[0], 25)
-    myobj.close_db()
+        myobj.write_to_database(k, v[0], 17)

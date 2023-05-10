@@ -34,7 +34,7 @@ scheduler.start()
 
 """
 nohup: ignoring input and appending output to ‘nohup.out’
-nohup python3.6 -u  scheduler_WriteToDB.py > out.log 2>&1 &
+nohup python3.6 -u  scheduler_WriteToDB.py > WriteToDB.log 2>&1 &
 参考链接https://blog.csdn.net/qq_37266079/article/details/104454276
 """
 

@@ -33,6 +33,6 @@ scheduler.add_job(period_analysis_db, 'cron', day_of_week='mon-fri', hour='8,11,
 scheduler.start()
 """
 nohup: ignoring input and appending output to ‘nohup.out’
-nohup python3.6 -u  scheduler_AnalyseDB.py > out2.log 2>&1 &
+nohup python3.6 -u  scheduler_AnalyseDB.py > AnalyseDB.log 2>&1 &
 参考链接https://blog.csdn.net/qq_37266079/article/details/104454276
 """
