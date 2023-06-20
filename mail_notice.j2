@@ -1,4 +1,4 @@
-从{{ s_time }}至{{ e_time }}的({{ time_interval }}小时)之间，共监测到：
-{%  for key,values in policy.items() %}
-攻击源IP"{{ key }}"被IPS拦截{{ values }}次
+从{{ s_time }}至{{ e_time }}的({{ time_interval }}小时)之间，共监测到：{% for key,values in policy.items() %}    {% if key in blackip_list %}
+攻击源IP"{{ key }}"被IPS拦截{{ values }}次,该IP已被加入黑名单{% else %}
+攻击源IP"{{ key }}"被IPS拦截{{ values }}次{% endif %}
 {% endfor %}

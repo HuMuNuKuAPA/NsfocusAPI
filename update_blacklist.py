@@ -14,14 +14,10 @@ loging_password = '6dd3cda8f68bc2b6701ba3e4e83800991ad02be83419af8cc500e20d93432
                   'ab0b01856aed8e189286f19447aab53b1dd4103296e249d74b9d21f27e043045757fcf56bb67a57c343435a2f374' \
                   'd265477634f704feeb744e2c7ea77c28dd35bebe0fb156910ef6519c15513644bc92f495fe5541f4077'
 
-"""
-183.15.176.216
-121.37.182.135
-"""
 
 myobj = NsfocusAPI(login_account, loging_password)
 for k, v in device_dict.items():
-    post_result, post_content = myobj.post_blacklist(k, '108.181.33.59')
+    post_result, post_content = myobj.update_ips_blacklist(k, '95.214.53.99')
     pprint(post_content)
     apply_result, apply_content = myobj.post_applyconfig(k)
     pprint(apply_content)

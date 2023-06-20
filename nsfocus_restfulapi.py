@@ -3,6 +3,8 @@
 # 作者：呼姆呼姆
 # 邮箱：wuzhiping26@gmail.com
 # 日期：2023年5月9日
+from pprint import pprint
+
 import requests
 import json
 import hashlib
@@ -18,6 +20,7 @@ from email.mime.application import MIMEApplication
 import pymysql
 from jinja2 import Environment, FileSystemLoader
 import time
+from device_info import device_dict
 
 urllib3.disable_warnings()
 
@@ -46,7 +49,7 @@ class NsfocusAPI:
         self.mailAccount = 'wuzp@cfsc.com.cn'
         self.mailPWD = 'Systec123'  # 公司邮箱的发件人密码
         self.from_mail = 'wuzp@cfsc.com.cn'
-        self.to_mail = 'lushi@cfsc.com.cn;wangpeng@cfsc.com.cn;wuzp@cfsc.com.cn'
+        self.to_mail = 'lushi@cfsc.com.cn;wangpeng@cfsc.com.cn;wuzp@cfsc.com.cn;shenzx@cfsc.com.cn;'
 
     def get_key(self, dev_ip):
         """
@@ -217,7 +220,50 @@ class NsfocusAPI:
         api_para = f'?pageSize={self.pageSize}&pageNo={self.pageNo}'
         # 通过self.send_get_request方法发送request请求，并获取结果
         result = self.send_get_request(ip, api, api_para)
-        return result
+        # blackip = []
+        # for i in result['data']['data']:
+        #     # pprint(result['data']['data'])
+        #     blackip.append(i['name'])
+        return result['data']['data']
+
+    def update_ips_blacklist(self, ip, blackip, days=90):
+        # black_id用于存储黑名单列表中的id，在更新黑名单列表的时候，需要用id来标识需要更新的信息
+        black_id = 0
+        # 调用get_ips_blacklist()函数，用来获得所有的黑名单信息
+        blacklist = self.get_ips_blacklist(ip)
+        for dict_info in blacklist:
+            for k, v in dict_info.items():
+                # 通过blackip定位到具体的黑名单信息
+                if v == blackip:
+                    # 然后通过id键获得需要的id值
+                    black_id = dict_info['id']
+        # 更新黑名单的API接口
+        url = '/api/policy/globalList/black/manual'
+        # 通过structure_post_url方法，构造URL
+        url_request, cookie = self.structure_post_url(ip, url)
+        # 获取当前时间，用于给黑名单的abstract属性设置时间，abstract属性在IPS页面中就是备注
+        current_time = datetime.datetime.now()
+        # end_time是黑名单的封禁时间默认加黑30天
+        end_time = current_time + datetime.timedelta(days=days)
+        data = {
+            "action": "update",
+            "data": {
+                'id': black_id,
+                'abstract': f'于{current_time}更新',  # 备注信息
+                'cate': 'ip',  # 通过IP的方式添加
+                'end_time': end_time.strftime("%Y.%m.%d"),
+                'name': blackip,
+                'start_time': '',  # 不写默认就是当前时间
+                'threat_type': '9'
+            }
+        }
+        # 发送请求
+        try:
+            request = requests.post(url=url_request, data=json.dumps(data), cookies=cookie, verify=False, timeout=2)
+            return True, request.text
+        except requests.exceptions.ConnectTimeout as e:
+            # print('请求失败', e)
+            return False, e
 
     def send_mail(self, subj, main_body, files=None):  # 使用SSL加密SMTP发送邮件, 此函数发送的邮件有主题,有正文,还可以发送附件
         """
@@ -360,6 +406,10 @@ class NsfocusAPI:
         :param time_step: 分析多少小时间内的数据，默认值是24小时
         :return:
         """
+        # 调用get_ips_blacklist方法获取黑名单信息的字典
+        blackip_dict = self.get_ips_blacklist(ips_ip)
+        # 从字典中提取所有的黑名单IP
+        blackip_list = [i['name'] for i in blackip_dict]
         # 模板的位置；这里用到jinja2的模板，这个模板主要是为发送的邮件内容提供模板
         env = Environment(loader=FileSystemLoader('.'))
         # 加载模板
@@ -399,7 +449,7 @@ class NsfocusAPI:
             # 输出结果
             for x in myresult:
                 result_dict[x[0]] = x[1]
-                print(x)
+                # print(x)
 
         except pymysql.Error as error:
             print("Failed to execute query: {}".format(error))
@@ -416,7 +466,8 @@ class NsfocusAPI:
         s_datetime = e_datetime - hour_step
         # 通过jinja2生成的模板生成邮件的内容
         result = template.render(policy=result_dict, s_time=s_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                                 e_time=e_datetime.strftime("%Y-%m-%d %H:%M:%S"), time_interval=time_step)
+                                 e_time=e_datetime.strftime("%Y-%m-%d %H:%M:%S"), time_interval=time_step,
+                                 blackip_list=blackip_list)
 
         # 发送告警邮件
         if myresult:
@@ -440,15 +491,90 @@ if __name__ == '__main__':
                       'ab0b01856aed8e189286f19447aab53b1dd4103296e249d74b9d21f27e043045757fcf56bb67a57c343435a2f374' \
                       'd265477634f704feeb744e2c7ea77c28dd35bebe0fb156910ef6519c15513644bc92f495fe5541f4077'
 
-    myobj = NsfocusAPI(login_account, loging_password)
 
-    arg_dict = {
-        '10.167.68.9': ['qc_ips_event', 16, '金桥全创'],
-        '10.168.46.33': ['zq_ips_event', 2, '金桥网上交易'],
-        '10.168.224.241': ['oa_ips_event', 2, '金桥OA区'],
-        '10.192.4.61': ['kjw_ips_event', 2, '科技网'],
-        '10.190.204.66': ['wp_ips_event', 16, '宛平南路'],
-    }
+    # myobj = NsfocusAPI(login_account, loging_password)
+    #
+    #
+    # # arg_dict = {
+    # #     '10.167.68.9': ['qc_ips_event', 16, '金桥全创'],
+    # #     '10.168.46.33': ['zq_ips_event', 2, '金桥网上交易'],
+    # #     '10.168.224.241': ['oa_ips_event', 2, '金桥OA区'],
+    # #     '10.192.4.61': ['kjw_ips_event', 2, '科技网'],
+    # #     '10.190.204.66': ['wp_ips_event', 16, '宛平南路'],
+    # # }
+    # #
+    # # for k, v in arg_dict.items():
+    # #     myobj.write_to_database(k, v[0], 17)
+    #
+    # blacklist = myobj.get_ips_blacklist('10.192.4.61')
+    # pprint(blacklist)
+    class Ceshi(NsfocusAPI):
+        def analyse_database(self, ips_ip, tb_name, attack_number, location, time_step=24):
+            blackip_dict = self.get_ips_blacklist(ips_ip)
+            blackip_list = [i['name'] for i in blackip_dict]
+            # 模板的位置；这里用到jinja2的模板，这个模板主要是为发送的邮件内容提供模板
+            env = Environment(loader=FileSystemLoader('.'))
+            # 加载模板
+            template = env.get_template("mail_notice.j2")
+            # 获取当前时间由于发邮件用
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    for k, v in arg_dict.items():
-        myobj.write_to_database(k, v[0], 17)
+            try:
+                # 创建数据库连接对象
+                mydb = pymysql.connect(
+                    host="10.168.51.237",
+                    user="wuzp",
+                    password="Systec#278",
+                    database="config_backup",
+                    port=3306,
+                    charset="utf8"
+                )
+                # 创建游标对象
+                mycursor = mydb.cursor()
+                # 执行SQL语句，查询orders表中customer_id为1的记录
+                sql = "select sip, count(*) from {} where event_time  BETWEEN NOW() - INTERVAL %s HOUR AND NOW()".format(
+                    tb_name)
+                # sql = "select * from ips_event where event_time  BETWEEN NOW() - INTERVAL %s HOUR AND NOW()"
+                # sql += " AND threat_level = 3"
+                sql += f" AND action = {attack_number}"
+                sql += " GROUP BY sip"
+                sql += " having count(*) > 3"
+
+                mycursor.execute(sql,
+                                 time_step
+                                 )
+                # 获取结果
+                myresult = mycursor.fetchall()
+
+                # 创建一个字典用于存放数据库的返回结果，这个结果后面还会被jinja2用于生成邮件内容用
+                result_dict = {}
+                # 输出结果
+                for x in myresult:
+                    result_dict[x[0]] = x[1]
+                    print(x)
+
+            except pymysql.Error as error:
+                print("Failed to execute query: {}".format(error))
+                # 异常抛出
+                # print(myresult)
+                raise error
+
+            # 关闭连接
+            mydb.close()
+
+            # 以下三个时间参数都是为了发送邮件时候用的
+            hour_step = datetime.timedelta(hours=time_step)
+            e_datetime = datetime.datetime.now()
+            s_datetime = e_datetime - hour_step
+            # 通过jinja2生成的模板生成邮件的内容
+            result = template.render(policy=result_dict, s_time=s_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                                     e_time=e_datetime.strftime("%Y-%m-%d %H:%M:%S"), time_interval=time_step,
+                                     blackip_list=blackip_list)
+
+            print(result)
+            # print(type(result))
+
+
+    myobj = Ceshi(login_account, loging_password)
+    # 10.192.4.61': ['kjw_ips_event', 2, '科技网']
+    myobj.analyse_database('10.192.4.61', 'kjw_ips_event', 2, '科技网')
