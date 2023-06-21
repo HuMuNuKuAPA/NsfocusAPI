@@ -21,7 +21,7 @@ loging_password = '6dd3cda8f68bc2b6701ba3e4e83800991ad02be83419af8cc500e20d93432
 
 myobj = NsfocusAPI(login_account, loging_password)
 for k, v in device_dict.items():
-    post_result, post_content = myobj.post_blacklist(k, '108.181.33.59')
+    post_result, post_content = myobj.post_blacklist(k, '42.192.79.197')
     pprint(post_content)
     apply_result, apply_content = myobj.post_applyconfig(k)
     pprint(apply_content)

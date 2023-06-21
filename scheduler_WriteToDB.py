@@ -22,7 +22,7 @@ myobj = NsfocusAPI(login_account, loging_password)
 def period_write_to_db():
     for ip, info in device_dict.items():
         myobj.write_to_database(ip, info[0])
-    myobj.close_db()
+    # myobj.close_db()
 
 
 # create scheduler object

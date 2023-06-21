@@ -20,7 +20,7 @@ myobj = NsfocusAPI(login_account, loging_password)
 def period_analysis_db():
     for ip, info in device_dict.items():
         myobj.analyse_database(ip, info[0], info[1], info[2])
-    myobj.close_db()
+    # myobj.close_db()
 
 
 # period_analysis_db()

@@ -1,4 +1,15 @@
-从{{ s_time }}至{{ e_time }}的({{ time_interval }}小时)之间，共监测到：{% for key,values in policy.items() %}    {% if key in blackip_list %}
-攻击源IP"{{ key }}"被IPS拦截{{ values }}次,该IP已被加入黑名单{% else %}
-攻击源IP"{{ key }}"被IPS拦截{{ values }}次{% endif %}
-{% endfor %}
+<h1>从{{ s_time }}至{{ e_time }}的({{ time_interval }}小时)之间，共监测到：
+    {% for key,values in policy.items() %} </h1>
+        {% if key in blackip_list %}
+            <p>
+                攻击源IP"<span style="color: dodgerblue">{{ key }}</span>"触发以下IPS告警:
+                {% for i in values[1:] %}{{ i }}；{% endfor %}
+                <span style="background-color: orangered;color: aliceblue">该IP已被加入黑名单。</span>
+            </p>
+        {% else %}
+            <p>
+                攻击源IP"<span style="color: dodgerblue">{{ key }}</span>"被IPS拦截
+                <span style="color: orangered;font-weight: bolder;font-style: italic">{{ values[0] }}</span>次，该IP触发以下IPS告警:
+                {% for i in values[1:] %}{{ i }}；{% endfor %}{% endif %}
+            </p>
+    {% endfor %}
