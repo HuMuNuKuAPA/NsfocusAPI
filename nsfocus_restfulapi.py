@@ -11,12 +11,14 @@ import hashlib
 import urllib3
 import re
 import datetime
-from email.mime.text import MIMEText
 import os
 import smtplib
 import email.utils
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.mime.text import MIMEText
+from email.utils import formataddr
+from email.mime.image import MIMEImage
 import pymysql
 from jinja2 import Environment, FileSystemLoader
 import time
@@ -279,9 +281,17 @@ class NsfocusAPI:
         date = email.utils.formatdate()  # 格式化邮件时间
         msg = MIMEMultipart()  # 产生MIME多部分的邮件信息
         msg["Subject"] = subj  # 主题
-        msg["From"] = self.from_mail  # 发件人
+        msg["From"] = formataddr(["绿盟IPS自动化告警", self.from_mail])  # 发件人
         msg["To"] = self.to_mail  # 收件人
         msg["Date"] = date  # 发件日期
+
+        # 指定图片为当前目录
+        fp = open('30year.gif', 'rb')
+        msgImage = MIMEImage(fp.read())
+        fp.close()
+        # 定义图片 ID，在 HTML 文本中引用
+        msgImage.add_header('Content-ID', '<image>')
+        msg.attach(msgImage)
 
         # 邮件正文为Text类型, 使用MIMEText添加
         # MIME类型介绍 https://docs.python.org/2/library/email.mime.html
@@ -450,6 +460,7 @@ class NsfocusAPI:
             event_dict = {}
             # 输出结果
             for x in myresult:
+                # x的值是（'地址'：'攻击次数'），x[0]代表攻击源地址，x[1]代表攻击次数
                 attack_event_sql = "select sip,event from {} where sip= \"{}\"".format(
                     tb_name, x[0])
                 mycursor.execute(attack_event_sql)
